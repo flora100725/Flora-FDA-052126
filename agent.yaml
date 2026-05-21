@@ -1,0 +1,502 @@
+version: "2.2"
+system_scope: "TFDA/FDA Comprehensive Medical Device Premarket Submission Review"
+agents:
+  # ==========================================
+  # GROUP A: ADMINISTRATIVE & REGULATORY STRATEGY (TFDA TABLES 1 & 2)
+  # ==========================================
+  - id: "administrative_compliance_agent"
+    name: "Administrative & Regulatory Verification Specialist"
+    role: "Audits Class I (Table 1) and Class II/III (Table 2) application forms, business licenses, and China-origin import certificates."
+    domain: "metadata"
+    required_schema_fields:
+      - "metadata.applicant"
+      - "metadata.device_name"
+      - "metadata.regulatory_class"
+      - "metadata.manufacturing_facilities"
+    capabilities:
+      - "tfda_table_1_and_2_checklist_audit"
+      - "medical_device_merchant_license_validation" # Table 1 Note 2 & Table 2 Note 3
+      - "china_origin_import_permit_verification"    # Table 1 Note 6(2) & Table 2 Note 13(3)
+    parameters:
+      temperature: 0.0
+      max_tokens: 1800
+      system_instruction_override: |
+        Evaluate administrative files against Table 1 & Table 2 criteria. 
+        1. Ensure manufacturing applicants have a Medical Device Manufacturing License (醫療器材製造業許可執照).
+        2. Ensure importers have a Medical Device Retail/Wholesale License listing 'Import' (輸入) in their business scope.
+        3. For domestic contract manufacturing (國內委託製造), check that both the contractor (委託者) and the contract manufacturer (受託製造業者) licenses are submitted.
+        4. If the place of origin is China, flag and require a formal permit from the International Trade Administration (經濟部國際貿易局) prior to submission.
+
+  - id: "chinese_labeling_specialist"
+    name: "Traditional Chinese Labeling & IFU Auditor"
+    role: "Audits Chinese label drafts, instructions for use (IFU), and packaging layouts for Class I (Table 1 Note 4) and Class II/III (Table 2 Note 2)."
+    domain: "metadata"
+    required_schema_fields:
+      - "metadata.chinese_labeling_draft"
+    capabilities:
+      - "class_1_identification_adequacy_audit" # Table 1 Note 4 (intended use, function, working principles, product components)
+      - "class_2_3_labeling_draft_validation"    # Table 2 Note 2 (color product photos, original labels, detailed Chinese translation)
+    parameters:
+      temperature: 0.1
+      max_tokens: 2000
+
+  - id: "import_clearance_authenticator_agent"
+    name: "Certificate of Free Sale & Power of Attorney Authenticator"
+    role: "Reviews the authenticity, embassy validations, translation compliance, and validity periods of CFS/CFG and POA documents (Table 2 Notes 4 & 5)."
+    domain: "metadata"
+    required_schema_fields:
+      - "metadata.certificate_of_free_sale"
+      - "metadata.power_of_attorney"
+    capabilities:
+      - "cfs_embassy_verification_check" # Table 2 Note 4 (2-year validity, consular validation, translation, model consistency)
+      - "poa_validity_and_scope_audit"    # Table 2 Note 5 (1-year validity, localized address alignment, model consistency)
+    parameters:
+      temperature: 0.0
+      max_tokens: 2200
+
+  - id: "manufacturer_qms_auditor"
+    name: "Manufacturing Quality Management System (QMS) Auditor"
+    role: "Evaluates ISO 13485, TFDA QMS/GMP, and drug GMP transition eligibility (Table 1 Note 3 & Table 2 Note 6)."
+    domain: "metadata"
+    required_schema_fields:
+      - "metadata.manufacturing_facilities"
+    capabilities:
+      - "tfda_qms_certification_verification"
+      - "drug_gmp_substitution_assessment" # Table 2 Note 6(2) (reclassified items within 3 years)
+    parameters:
+      temperature: 0.0
+      max_tokens: 1500
+
+  - id: "trademark_and_standards_auditor"
+    name: "Trademark & Standards Performance Claim Validator"
+    role: "Audits trademark registrations, consent letters, and standards-related naming claims (Table 1 Note 6 & Table 2 Note 13)."
+    domain: "metadata"
+    required_schema_fields:
+      - "metadata.device_name"
+    capabilities:
+      - "trademark_consent_letter_verification" # Table 1 Note 6(1) & Table 2 Note 13(2)
+      - "national_standard_performance_validation" # Table 1 Note 6(3) & Table 2 Note 13(5)
+    parameters:
+      temperature: 0.1
+      max_tokens: 1500
+
+  # ==========================================
+  # GROUP B: CLINICAL & PRE-CLINICAL SAFETY (ISO 17025 / GLP STANDARDS)
+  # ==========================================
+  - id: "laboratory_accreditation_auditor"
+    name: "ISO 17025 / GLP Laboratory Accreditation Auditor"
+    role: "Ensures testing facilities for biocompatibility, electrical safety, EMC, and sterility comply with ISO/IEC 17025 or GLP standards (Table 2 Note 7(5))."
+    domain: "clinical_and_performance_testing"
+    required_schema_fields:
+      - "clinical_and_performance_testing.biocompatibility_studies"
+      - "electrical_and_hardware.iec_60601_compliance"
+      - "electrical_and_hardware.emc_test_reports"
+    capabilities:
+      - "testing_laboratory_accreditation_check"
+      - "glp_compliance_verification"
+    parameters:
+      temperature: 0.0
+      max_tokens: 1800
+
+  - id: "biocompatibility_toxicologist"
+    name: "Biocompatibility & Materials Toxicologist"
+    role: "Audits materials biocompatibility test specs, methods, and results under ISO 10993 and Table 2 Note 7."
+    domain: "clinical_and_performance_testing"
+    required_schema_fields:
+      - "device_description.materials_and_biocompatibility"
+      - "clinical_and_performance_testing.biocompatibility_studies"
+    capabilities:
+      - "iso_10993_conformance_check"
+      - "glp_testing_source_verification"
+    parameters:
+      temperature: 0.1
+      max_tokens: 2500
+
+  - id: "sterilization_validation_analyst"
+    name: "Sterilization & Packaging Integrity Analyst"
+    role: "Reviews sterility testing validation parameters and lab accreditations (Table 2 Note 7)."
+    domain: "clinical_and_performance_testing"
+    required_schema_fields:
+      - "clinical_and_performance_testing.sterilization_validation"
+    capabilities:
+      - "sterility_test_lab_standards_check"
+      - "iso_11135_11137_compliance_verification"
+    parameters:
+      temperature: 0.1
+      max_tokens: 2000
+
+  - id: "reprocessing_cleaning_expert"
+    name: "Reusable Reprocessing & Cleaning Validator"
+    role: "Audits disinfection, cleaning, and reuse instructions for reusable components (Table 2 Note 7)."
+    domain: "clinical_and_performance_testing"
+    required_schema_fields:
+      - "clinical_and_performance_testing.reprocessing_validation"
+    capabilities:
+      - "cleaning_efficacy_log_reduction_eval"
+    parameters:
+      temperature: 0.1
+      max_tokens: 1800
+
+  - id: "materials_chemical_characterization_analyst"
+    name: "ISO 10993-18 Chemical Characterization Analyst"
+    role: "Reviews extractables and leachables (E&L) data under ISO 10993-18 and Table 2 Note 7."
+    domain: "device_description"
+    required_schema_fields:
+      - "device_description.materials_and_biocompatibility"
+    capabilities:
+      - "extractables_leachables_conformance_check"
+    parameters:
+      temperature: 0.1
+      max_tokens: 2000
+
+  - id: "bse_tse_hazard_analyst"
+    name: "BSE/TSE Zoonotic Risk Control Specialist"
+    role: "Audits material sourcing and processing safety documentation for bovine or ovine materials (Table 2 Note 13(1))."
+    domain: "device_description"
+    required_schema_fields:
+      - "device_description.materials_and_biocompatibility"
+    capabilities:
+      - "bse_risk_free_area_sourcing_validation"
+      - "zoonotic_contamination_control_review"
+    parameters:
+      temperature: 0.0
+      max_tokens: 1800
+
+  - id: "preclinical_substitution_analyst"
+    name: "Class II Preclinical Data Substitution Analyst"
+    role: "Evaluates the eligibility of Class II preclinical substitutions via bilateral technical cooperation agreements or compliance statements (Table 2 Note 7(2) & 7(3))."
+    domain: "clinical_and_performance_testing"
+    required_schema_fields:
+      - "clinical_and_performance_testing.bench_testing_summary"
+    capabilities:
+      - "technical_cooperation_agreement_qualification_check"
+      - "preclinical_conformity_statement_review"
+    parameters:
+      temperature: 0.1
+      max_tokens: 2200
+
+  - id: "bench_performance_engineer"
+    name: "Mechanical Bench Testing & Performance Engineer"
+    role: "Reviews physical performance tests, raw testing reports, and specifications (Table 1 Note 5 & Table 2 Note 7)."
+    domain: "clinical_and_performance_testing"
+    required_schema_fields:
+      - "clinical_and_performance_testing.bench_testing_summary"
+    capabilities:
+      - "performance_spec_limits_validation"
+      - "bench_testing_conformance_audit"
+    parameters:
+      temperature: 0.15
+      max_tokens: 2500
+
+  - id: "environmental_stress_test_analyst"
+    name: "Environmental Stress & Transit Analyst"
+    role: "Reviews environmental stress-testing, shipping vibration, and transport safety profiles (Table 2 Note 7)."
+    domain: "clinical_and_performance_testing"
+    required_schema_fields:
+      - "clinical_and_performance_testing.bench_testing_summary"
+    capabilities:
+      - "environmental_operability_verification"
+    parameters:
+      temperature: 0.2
+      max_tokens: 2000
+
+  # ==========================================
+  # GROUP C: CLINICAL EVIDENCE & EP/STED (TABLE 2 ITEMS 9, 10, 11)
+  # ==========================================
+  - id: "clinical_evidence_synthesizer"
+    name: "Clinical Evidence & Trial Report Synthesizer"
+    role: "Audits clinical evaluation reports, literature reviews, clinical trials, and clinical evidence exemption pathways (Table 2 Note 9)."
+    domain: "clinical_and_performance_testing"
+    required_schema_fields:
+      - "clinical_and_performance_testing.clinical_evaluations"
+    capabilities:
+      - "clinical_trial_report_validity_audit"
+      - "clinical_evidence_exemption_eligibility_check" # Table 2 Note 9(3) & 9(4) (US/EU approval, no racial difference, no severe adverse events)
+    parameters:
+      temperature: 0.15
+      max_tokens: 3000
+
+  - id: "radiation_safety_agent"
+    name: "Ionizing Radiation Safety & Protection Specialist"
+    role: "Evaluates radiation safety profiles and protection metrics for ionizing radiation devices (Table 2 Item 10)."
+    domain: "electrical_and_hardware"
+    required_schema_fields:
+      - "electrical_and_hardware.radiation_safety_records"
+    capabilities:
+      - "ionizing_radiation_shielding_validation"
+      - "dose_limits_safety_compliance_audit"
+    parameters:
+      temperature: 0.1
+      max_tokens: 2000
+
+  - id: "ep_sted_compliance_expert"
+    name: "EP & STED Conformity Specialist"
+    role: "Reviews Essential Principles (EP) checklists and Summary Technical Documentation (STED) against TFDA formats (Table 2 Item 11)."
+    domain: "clinical_and_performance_testing"
+    required_schema_fields:
+      - "clinical_and_performance_testing.ep_sted_summary"
+    capabilities:
+      - "ep_checklist_thoroughness_audit"
+      - "sted_structural_completeness_check" # Table 2 Note 11 (format conformance, required for Class III and Class II technical pathways)
+    parameters:
+      temperature: 0.1
+      max_tokens: 2400
+
+  - id: "clinical_trial_statistician"
+    name: "Clinical Trial & Statistical Analyst"
+    role: "Evaluates sample sizes, endpoint definitions, and confidence intervals in clinical investigation reports (Table 2 Note 9)."
+    domain: "clinical_and_performance_testing"
+    required_schema_fields:
+      - "clinical_and_performance_testing.clinical_evaluations"
+    capabilities:
+      - "statistical_significance_conformance_check"
+    parameters:
+      temperature: 0.2
+      max_tokens: 2500
+
+  # ==========================================
+  # GROUP D: ELECTRICAL & HARDWARE COMPLIANCE
+  # ==========================================
+  - id: "electrical_safety_auditor"
+    name: "IEC 60601-1 General Electrical Safety Specialist"
+    role: "Audits electrical safety data and creepage diagrams verified by accredited ISO 17025 laboratories (Table 2 Note 7)."
+    domain: "electrical_and_hardware"
+    required_schema_fields:
+      - "electrical_and_hardware.iec_60601_compliance"
+    capabilities:
+      - "isolation_diagram_integrity_check"
+      - "accredited_lab_report_conformance" # Table 2 Note 7(5)
+    parameters:
+      temperature: 0.1
+      max_tokens: 2500
+
+  - id: "emc_compat_expert"
+    name: "IEC 60601-1-2 Electromagnetic Compatibility Specialist"
+    role: "Reviews radiated emissions and ESD immunity test reports issued by ISO 17025 accredited labs (Table 2 Note 7)."
+    domain: "electrical_and_hardware"
+    required_schema_fields:
+      - "electrical_and_hardware.emc_test_reports"
+    capabilities:
+      - "esd_rf_immunity_level_verification"
+      - "testing_lab_qualification_audit" # Table 2 Note 7(5)
+    parameters:
+      temperature: 0.1
+      max_tokens: 2200
+
+  - id: "battery_power_specialist"
+    name: "Lithium-Ion Battery Safety & Transit Specialist"
+    role: "Reviews battery cell safety parameters and UN 38.3 transit records (Table 2 Note 7)."
+    domain: "electrical_and_hardware"
+    required_schema_fields:
+      - "electrical_and_hardware.battery_specifications"
+    capabilities:
+      - "un_38_3_shipping_safety_check"
+    parameters:
+      temperature: 0.1
+      max_tokens: 2000
+
+  - id: "home_usability_engineer"
+    name: "IEC 62366-1 Human Factors & Usability Engineer"
+    role: "Audits usability profiles and user interface configurations for non-professional home care environments."
+    domain: "clinical_and_performance_testing"
+    required_schema_fields:
+      - "clinical_and_performance_testing.human_factors_usability"
+    capabilities:
+      - "home_care_usability_risk_mitigation_eval"
+    parameters:
+      temperature: 0.2
+      max_tokens: 2400
+
+  - id: "alarm_system_validator"
+    name: "IEC 60601-1-8 Alarm Systems Safety Auditor"
+    role: "Reviews auditory decibel levels and prioritized visual alerts under IEC 60601-1-8."
+    domain: "electrical_and_hardware"
+    required_schema_fields:
+      - "electrical_and_hardware.alarm_system_configurations"
+    capabilities:
+      - "alarm_condition_priority_validation"
+    parameters:
+      temperature: 0.1
+      max_tokens: 1800
+
+  # ==========================================
+  # GROUP E: SOFTWARE, CYBERSECURITY & SamD
+  # ==========================================
+  - id: "software_lifecycle_auditor"
+    name: "IEC 62304 Software Life-Cycle Processes Auditor"
+    role: "Audits software configuration, dynamic architecture diagrams, and testing logs (Table 2 Item 8)."
+    domain: "software_and_cybersecurity"
+    required_schema_fields:
+      - "software_and_cybersecurity.software_level_of_concern"
+      - "software_and_cybersecurity.system_architecture_summary"
+    capabilities:
+      - "iec_62304_lifecycle_compliance_audit"
+    parameters:
+      temperature: 0.1
+      max_tokens: 2500
+
+  - id: "firmware_anomaly_detector"
+    name: "Firmware Safety & Error-Handling Analyst"
+    role: "Reviews memory allocation safety and fail-secure logic systems."
+    domain: "software_and_cybersecurity"
+    required_schema_fields:
+      - "software_and_cybersecurity.firmware_specifications"
+    capabilities:
+      - "fail_secure_safe_state_audit"
+    parameters:
+      temperature: 0.2
+      max_tokens: 2200
+
+  - id: "ota_update_validator"
+    name: "Over-The-Air (OTA) Patch Management Auditor"
+    role: "Reviews secure firmware rollbacks, secure boots, and digital certificates."
+    domain: "software_and_cybersecurity"
+    required_schema_fields:
+      - "software_and_cybersecurity.cybersecurity_controls"
+    capabilities:
+      - "firmware_signature_verification_audit"
+    parameters:
+      temperature: 0.15
+      max_tokens: 2000
+
+  - id: "artificial_intelligence_validator"
+    name: "AI/ML Algorithm & Software as a Medical Device (SaMD) Specialist"
+    role: "Audits algorithm training datasets, drift thresholds, and diagnostic software parameters."
+    domain: "software_and_cybersecurity"
+    required_schema_fields:
+      - "software_and_cybersecurity.samd_ai_ml_parameters"
+    capabilities:
+      - "dataset_leakage_risk_evaluation"
+    parameters:
+      temperature: 0.2
+      max_tokens: 2800
+
+  - id: "cybersecurity_threat_modeler"
+    name: "Cybersecurity Threat Modeler & Vulnerability Assessor"
+    role: "Evaluates threat modeling, vulnerability mitigations, and Software Bill of Materials (SBOM)."
+    domain: "software_and_cybersecurity"
+    required_schema_fields:
+      - "software_and_cybersecurity.cybersecurity_controls"
+    capabilities:
+      - "sbom_vulnerability_relevance_check"
+    parameters:
+      temperature: 0.2
+      max_tokens: 2600
+
+  - id: "cryptographic_controls_analyst"
+    name: "Cryptographic Controls & Key Management Analyst"
+    role: "Reviews encryption systems for patient data transmissions."
+    domain: "software_and_cybersecurity"
+    required_schema_fields:
+      - "software_and_cybersecurity.cybersecurity_controls"
+    capabilities:
+      - "encryption_cipher_strength_conformance"
+    parameters:
+      temperature: 0.1
+      max_tokens: 2000
+
+  - id: "cloud_telemetry_guardian"
+    name: "Cloud SaaS, API & Telemetry Infrastructure Auditor"
+    role: "Audits security protocols for patient clinical telemetry pipelines."
+    domain: "software_and_cybersecurity"
+    required_schema_fields:
+      - "software_and_cybersecurity.cloud_telemetry_specifications"
+    capabilities:
+      - "api_auth_token_expiration_audit"
+    parameters:
+      temperature: 0.2
+      max_tokens: 2400
+
+  - id: "data_privacy_hipaa_compliance_agent"
+    name: "Data Privacy & HIPAA / PDPA Compliance Auditor"
+    role: "Audits privacy policies for patient databases under local Personal Data Protection Act (PDPA) rules."
+    domain: "software_and_cybersecurity"
+    required_schema_fields:
+      - "software_and_cybersecurity.cloud_telemetry_specifications"
+    capabilities:
+      - "taiwan_pdpa_compliance_evaluation"
+    parameters:
+      temperature: 0.1
+      max_tokens: 2200
+
+  # ==========================================
+  # GROUP F: RISK MANAGEMENT & LIFECYCLE
+  # ==========================================
+  - id: "risk_iso14971_compliance_agent"
+    name: "ISO 14971 Risk Management Compliance Auditor"
+    role: "Audits risk matrices, hazard logs, and risk files (Table 2 Item 8)."
+    domain: "risk_management"
+    required_schema_fields:
+      - "risk_management"
+    capabilities:
+      - "risk_control_traceability_audit"
+    parameters:
+      temperature: 0.1
+      max_tokens: 2500
+
+  - id: "fmea_fault_tree_analyst"
+    name: "FMEA & Fault Tree Critical Path Analyst"
+    role: "Audits failure modes, single-fault paths, and physical failure risks."
+    domain: "risk_management"
+    required_schema_fields:
+      - "risk_management"
+    capabilities:
+      - "single_fault_safety_logic_verification"
+    parameters:
+      temperature: 0.15
+      max_tokens: 2400
+
+  - id: "post_market_surveillance_planner"
+    name: "Post-Market Surveillance & Clinical Follow-up Specialist"
+    role: "Reviews post-market risk mitigation structures and clinical safety follow-ups."
+    domain: "risk_management"
+    required_schema_fields:
+      - "risk_management"
+    capabilities:
+      - "post_market_vigilance_process_audit"
+    parameters:
+      temperature: 0.2
+      max_tokens: 2000
+
+  - id: "pediatric_usability_auditor"
+    name: "Pediatric & Vulnerable Population Safety Specialist"
+    role: "Audits risks associated with pediatric use, user warning labels, and safety interlocks."
+    domain: "risk_management"
+    required_schema_fields:
+      - "risk_management"
+    capabilities:
+      - "off_label_use_mitigation_assessment"
+    parameters:
+      temperature: 0.25
+      max_tokens: 2000
+
+  - id: "same_product_name_reconciler_agent"
+    name: "Same Product Different Name Reconciler"
+    role: "Reviews explanations, original approved labels, and active licenses for identical products registered under alternative names (Table 2 Items 12, 13, 14)."
+    domain: "metadata"
+    required_schema_fields:
+      - "metadata.alternative_product_names"
+    capabilities:
+      - "identical_product_declaration_audit" # Table 2 Note 12 (original certificate reference, explanation of changes)
+      - "approved_label_and_license_cross_check" # Table 2 Items 13 & 14 (original stamps, active registrations)
+    parameters:
+      temperature: 0.0
+      max_tokens: 1800
+
+  # ==========================================
+  # GROUP G: COORDINATION & SYNTHESIS
+  # ==========================================
+  - id: "executive_synthesis_director"
+    name: "Master Executive Integration & Synthesis Director"
+    role: "Synthesizes multi-agent reviews into an executive report with detailed findings."
+    domain: "metadata"
+    required_schema_fields:
+      - "metadata"
+      - "device_description"
+      - "risk_management"
+    capabilities:
+      - "multi_agent_finding_reconciliation"
+      - "executive_deficiency_summary_generation"
+    parameters:
+      temperature: 0.3
+      max_tokens: 4000
